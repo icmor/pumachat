@@ -16,7 +16,7 @@ python -m unittest
 - [X] Receiving messages
 - [X] Implement all required messages
 - [X] General error handling
-- [ ] Commandline args (argparse)
+- [X] Commandline args (argparse)
 *** Server
 - [X] Handle connections (asyncio streams)
 - [ ] User login

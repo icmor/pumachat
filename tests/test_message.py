@@ -1,6 +1,9 @@
 import message
 import utils
 import unittest
+import logging
+
+logging.basicConfig(level=logging.CRITICAL)
 
 identify_msg = {"type": "IDENTIFY",
                 "username": "José Arcadio Buendía"}

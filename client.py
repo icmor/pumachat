@@ -6,12 +6,13 @@ from prompt_toolkit.patch_stdout import patch_stdout
 import asyncio
 import socket
 import logging
+import argparse
 import sys
 
 
 class Client(BaseChat):
 
-    def __init__(self, host=socket.gethostname(), port=8080):
+    def __init__(self, host, port):
         self.host = host
         self.port = port
         self.reader = None
@@ -250,15 +251,26 @@ class Client(BaseChat):
             await self.writer.wait_closed()
 
 
-async def main():
-    client = Client()
+async def main(host, port):
+    client = Client(host, port)
     await client.run()
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s [%(name)s:'
-                        ' %(lineno)d] %(message)s')
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--host", help="host running the chat server",
+                        default=socket.gethostname())
+    parser.add_argument("-p", "--port", type=int, default=8080,
+                        help="port to connect to on server host")
+    parser.add_argument("--debug", action="store_true",
+                        help="show debug information")
+    args = parser.parse_args()
+    format = "%(levelname)s [%(name)s: %(lineno)d] %(message)s"
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG, format=format)
+    else:
+        logging.basicConfig(level=logging.CRITICAL, format=format)
     try:
-        asyncio.run(main())
+        asyncio.run(main(args.host, args.port))
     except KeyboardInterrupt:
         pass
     finally:
