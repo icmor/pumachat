@@ -1,10 +1,10 @@
 import message
 import utils
 import unittest
-import json
 
 identify_msg = {"type": "IDENTIFY",
                 "username": "José Arcadio Buendía"}
+
 
 class MessagetTestCase(unittest.TestCase):
     def test_comparison(self):
