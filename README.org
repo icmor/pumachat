@@ -1,0 +1,23 @@
+* Pumachat
+** Plan
+*** Client
+- [ ] Basic asyncio messaging
+- [ ] Concurrent input (prompt-toolkit)
+- [ ] Sending messages
+- [ ] Receiving messages
+- [ ] Implement all required messages
+- [ ] General error handling
+- [ ] Commandline args (argparse)
+*** Server
+- [ ] Handle connections (asyncio streams)
+- [ ] User login
+- [ ] Receive messages
+- [ ] Implement required messages
+- [ ] Chatrooms
+- [ ] Network error handling
+- [ ] Commandline args (argparse)
+*** Optional
+- [ ] Logging and extra error checking
+- [ ] Help commands
+- [ ] prompt-toolkit colors
+- [ ] prompt-toolkit windows for rooms
