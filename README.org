@@ -11,9 +11,9 @@ python -m unittest
 ** Plan
 *** Client
 - [X] Basic asyncio messaging
-- [ ] Concurrent input (prompt-toolkit)
-- [ ] Sending messages
-- [ ] Receiving messages
+- [X] Concurrent input (prompt-toolkit)
+- [X] Sending messages
+- [X] Receiving messages
 - [ ] Implement all required messages
 - [ ] General error handling
 - [ ] Commandline args (argparse)
