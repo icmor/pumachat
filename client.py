@@ -28,10 +28,14 @@ class Client(BaseChat):
                     continue
                 break
         except (OSError, ConnectionRefusedError) as e:
-            print("Error de conexión.")
-            logging.debug(str(e))
+            logging.critical("Error de conexión.")
+            logging.exception(e)
         except MessageException as e:
-            logging.debug(str(e))
+            logging.critical("Respuesta del servidor no reconocida.")
+            logging.exception(e)
+        except asyncio.CancelledError as e:
+            logging.critical("Error inesperado durante la ejecución.")
+            logging.exception(e)
         finally:
             await self.cleanup()
 
@@ -41,6 +45,7 @@ class Client(BaseChat):
                                  "username": username}))
         response = await self.recv()
         logging.debug(response.__repr__())
+        raise MessageException("Unrecognized response from server")
         match response:
             case {"type": "INFO", "message": "success"}:
                 print(f"Login exitoso! Bienvenido {username}")
@@ -49,9 +54,8 @@ class Client(BaseChat):
                 print(response["message"])
                 return False
             case _:
-                logging.error("Expected message type 'WARNING'. Got",
-                              response.__repr__())
-                raise MessageException("Unrecognized response from server")
+                raise MessageException("Expected message type 'WARNING'. Got",
+                                       response.__repr__())
 
     async def cleanup(self):
         pass
