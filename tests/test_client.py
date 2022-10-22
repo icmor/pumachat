@@ -8,6 +8,7 @@ import socket
 
 logging.basicConfig(level=logging.CRITICAL)
 
+
 class ClientTestCase(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.server = Server(socket.gethostname(), 8080)

@@ -340,7 +340,8 @@ class Server:
                 case {"type": "DISCONNECT"}:
                     raise asyncio.CancelledError("Disconnect")
                 case _:
-                    raise MessageException(f"Bad format: {response.__repr__()}")
+                    raise MessageException("Bad format: "
+                                           + response.__repr__())
 
     async def send_to_all(self, username, message):
         logging.debug(f"Sending to all:{message.__repr__()}")
@@ -354,9 +355,9 @@ class Server:
         logging.debug(message.__repr__())
         await self.users[receiver].send(message)
 
-
     async def cleanup(handler):
         pass
+
 
 class ClientHandler(BaseChat):
     def __init__(self, reader, writer):
@@ -364,6 +365,7 @@ class ClientHandler(BaseChat):
         self.writer = writer
         self.username = None
         self.status = "ACTIVE"
+
 
 async def main():
     server = Server()
