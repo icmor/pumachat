@@ -74,6 +74,18 @@ class Server:
                              "operation": "IDENTIFY"})
                 )
 
+    async def send_to_all(self, username, message):
+        logging.debug(f"Sending to all:{message.__repr__()}")
+        for name, user in self.users.items():
+            if name == username:
+                continue
+            await user.send(message)
+
+    async def send_private_message(self, username, receiver, message):
+        logging.debug(f"Private message: {username} -> {receiver}")
+        logging.debug(message.__repr__())
+        await self.users[receiver].send(message)
+
 
 class ClientHandler(BaseChat):
     def __init__(self, reader, writer):
