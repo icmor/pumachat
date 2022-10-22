@@ -16,6 +16,7 @@ class Server:
         self.host = host
         self.port = port
         self.users = {}
+        self.rooms = {}
 
     async def run(self):
         server = await asyncio.start_server(self.handle, self.host, self.port)
@@ -35,8 +36,7 @@ class Server:
             await handler.send(Message({"type": "ERROR",
                                         "message": str(e)}))
         except asyncio.CancelledError as e:
-            logging.debug("Handler cancelado")
-            logging.exception(e)
+            logging.debug(f"Handler cancelado {str(e)}")
         except asyncio.exceptions.IncompleteReadError:
             logging.debug("Client disconnected")
         finally:
@@ -367,9 +367,30 @@ class Server:
         logging.debug(message.__repr__())
         await self.users[receiver].send(message)
 
-    async def cleanup(handler):
-        pass
+    async def cleanup(self, handler):
+        if handler.username is not None:
+            del self.users[handler.username]
+            for room in self.rooms.values():
+                if handler.username in room.users:
+                    room.users.discard(handler.username)
+                    await self.send_to_room(
+                        room, handler.username,
+                        Message({"type": "LEFT_ROOM",
+                                 "roomname": room.name,
+                                 "username":
+                                 handler.username})
+                    )
+                elif handler.username in room.invites:
+                    room.invites.discard(handler.username)
 
+            await self.send_to_all(
+                    handler.username,
+                    Message({"type": "DISCONNECTED",
+                             "username": handler.username})
+                )
+            handler.writer.close()
+            await handler.writer.wait_closed()
+            logging.debug(f"Cleaned-up handler for {handler.username}")
 
 class ClientHandler(BaseChat):
     def __init__(self, reader, writer):
