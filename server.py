@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 from utils import BaseChat, MessageException
 from message import Message
+from collections import namedtuple
 import asyncio
 import socket
 import logging
+import argparse
 
 
 class Server:
 
-    def __init__(self, host=socket.gethostname(), port=8080):
+    Room = namedtuple("Room", ["name", "users", "invites"])
+
+    def __init__(self, host, port):
         self.host = host
         self.port = port
         self.users = {}
@@ -350,6 +354,14 @@ class Server:
                 continue
             await user.send(message)
 
+    async def send_to_room(self, room, username, message):
+        logging.debug(f"Room message from: {username}")
+        logging.debug(message.__repr__())
+        for name in room.users:
+            if name == username:
+                continue
+            await self.users[name].send(message)
+
     async def send_private_message(self, username, receiver, message):
         logging.debug(f"Private message: {username} -> {receiver}")
         logging.debug(message.__repr__())
@@ -367,12 +379,27 @@ class ClientHandler(BaseChat):
         self.status = "ACTIVE"
 
 
-async def main():
-    server = Server()
+async def main(host, port):
+    server = Server(host, port)
     await server.run()
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(levelname)s [%(name)s] %(message)s')
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m", "--host", help="host address",
+                        default=socket.gethostname())
+    parser.add_argument("-p", "--port", type=int, default=8080)
+    parser.add_argument("--silent", action="store_true",
+                        help="do not show debug info")
+    args = parser.parse_args()
+    format = "%(levelname)s [%(name)s: %(lineno)d] %(message)s"
+    if args.silent:
+        logging.basicConfig(level=logging.CRITICAL, format=format)
+    else:
+        logging.basicConfig(level=logging.DEBUG, format=format)
+    try:
+        asyncio.run(main(args.host, args.port))
+    except KeyboardInterrupt:
+        pass
+    finally:
+        logging.info("Cerrando el servidor")

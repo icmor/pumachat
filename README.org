@@ -20,11 +20,11 @@ python -m unittest
 *** Server
 - [X] Handle connections (asyncio streams)
 - [X] User login
-- [ ] Receive messages
-- [ ] Implement required messages
-- [ ] Chatrooms
-- [ ] Network error handling
-- [ ] Commandline args (argparse)
+- [X] Receive messages
+- [X] Implement required messages
+- [X] Chatrooms
+- [X] Network error handling
+- [X] Commandline args (argparse)
 *** Optional
 - [ ] Logging and extra error checking
 - [ ] Help commands
