@@ -33,6 +33,10 @@ class Server:
         except asyncio.CancelledError as e:
             logging.debug("Handler cancelado")
             logging.exception(e)
+        except asyncio.exceptions.IncompleteReadError:
+            logging.debug("Client disconnected")
+        finally:
+            await self.cleanup(handler)
 
     async def login_user(self, handler):
         msg = await handler.recv()
@@ -49,11 +53,11 @@ class Server:
                         Message({"type": "INFO", "message": "success",
                                  "operation": "IDENTIFY"})
                     )
-                    # await self.send_to_all(
-                        # handler.username,
-                        # Message({"type": "NEW_USER",
-                                 # "username": handler.username})
-                    # )
+                    await self.send_to_all(
+                        handler.username,
+                        Message({"type": "NEW_USER",
+                                 "username": handler.username})
+                    )
                 else:
                     await handler.send(Message({"type": "WARNING",
                                                 "message": "El usuario "
@@ -65,14 +69,76 @@ class Server:
                                        "'IDENTIFY'")
 
     async def recv_messages(self, handler):
-        response = await handler.recv()
-        match response:
-            case {"type": "IDENTIFY", "username": _}:
-                await handler.send(
-                    Message({"type": "INFO",
-                             "message": "success",
-                             "operation": "IDENTIFY"})
-                )
+        while True:
+            response = await handler.recv()
+            match response:
+                case {"type": "STATUS",
+                      "status": ("AWAY" | "ACTIVE" | "BUSY") as status}:
+                    if status == handler.status:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": f"El estado ya es {status}",
+                                     "operation": "STATUS",
+                                     "status": status})
+                        )
+                    else:
+                        handler.status = status
+                        await handler.send(
+                            Message({"type": "INFO",
+                                     "message": "success",
+                                     "operation": "STATUS"})
+                        )
+                        await self.send_to_all(
+                            handler.username,
+                            Message({"type": "NEW_STATUS",
+                                     "username": handler.username,
+                                     "status": status})
+                        )
+
+                case {"type": "USERS"}:
+                    await handler.send(
+                        Message({"type": "USER_LIST",
+                                 "usernames": list(self.users.keys())})
+                    )
+
+                case {"type": "MESSAGE", "username": str(username),
+                      "message": str(message)}:
+                    if username == handler.username:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "operation": "MESSAGE",
+                                     "message":
+                                     "No puedes mandarte mensajes a tí mismo"})
+                        )
+
+                    elif username not in self.users:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "operation": "MESSAGE",
+                                     "message":
+                                     f"El usuario {username} no existe"})
+                        )
+
+                    else:
+                        await self.send_private_message(
+                            handler.username, username,
+                            Message({"type": "MESSAGE_FROM",
+                                     "username": handler.username,
+                                     "message": message})
+                        )
+
+                case {"type": "PUBLIC_MESSAGE", "message": str(message)}:
+                    await self.send_to_all(
+                        handler.username,
+                        Message({"type": "PUBLIC_MESSAGE_FROM",
+                                 "username": handler.username,
+                                 "message": message})
+                    )
+
+                case {"type": "DISCONNECT"}:
+                    raise asyncio.CancelledError("Disconnect")
+                case _:
+                    raise MessageException(f"Bad format: {response.__repr__()}")
 
     async def send_to_all(self, username, message):
         logging.debug(f"Sending to all:{message.__repr__()}")
@@ -87,11 +153,15 @@ class Server:
         await self.users[receiver].send(message)
 
 
+    async def cleanup(handler):
+        pass
+
 class ClientHandler(BaseChat):
     def __init__(self, reader, writer):
         self.reader = reader
         self.writer = writer
-
+        self.username = None
+        self.status = "ACTIVE"
 
 async def main():
     server = Server()
