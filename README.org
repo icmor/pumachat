@@ -19,7 +19,7 @@ python -m unittest
 - [X] Commandline args (argparse)
 *** Server
 - [X] Handle connections (asyncio streams)
-- [ ] User login
+- [X] User login
 - [ ] Receive messages
 - [ ] Implement required messages
 - [ ] Chatrooms
