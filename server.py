@@ -135,6 +135,208 @@ class Server:
                                  "message": message})
                     )
 
+                case {"type": "NEW_ROOM", "roomname": str(roomname)}:
+                    if roomname not in self.rooms:
+                        room = Server.Room(roomname, {handler.username}, set())
+                        self.rooms[room.name] = room
+                        await handler.send(
+                            Message({"type": "INFO",
+                                     "message": "success",
+                                     "operation": "NEW_ROOM",
+                                     "roomname": roomname})
+                        )
+
+                    else:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message":
+                                     f"El cuarto '{roomname}' ya existe",
+                                     "operation": "NEW_ROOM",
+                                     "roomname": roomname})
+                        )
+
+                case {"type": "INVITE", "roomname": str(roomname),
+                      "usernames": list(usernames)}:
+                    if roomname not in self.rooms:
+                        await handler.send(Message({"type": "WARNING",
+                                                    "message":
+                                                    f"El cuarto '{roomname}' "
+                                                    "no existe",
+                                                    "operation": "INVITE",
+                                                    "roomname": roomname}))
+
+                    elif (handler.username not in
+                          (room := self.rooms[roomname]).users):
+                        await handler.send(Message({"type": "WARNING",
+                                                    "message":
+                                                    "No eres miembro del "
+                                                    f"cuarto '{roomname}'",
+                                                    "operation": "INVITE",
+                                                    "roomname": roomname}))
+
+                    # walrus operator allows leaking, PEP 572 Appendix B
+                    elif any([(username := name) not in self.users
+                              for name in usernames]):
+                        await handler.send(Message({"type": "WARNING",
+                                                    "message":
+                                                    f"El usuario '{username}' "
+                                                    "no existe",
+                                                    "operation": "NEW_ROOM",
+                                                    "username": username}))
+
+                    else:
+                        invite = Message({"type": "INVITATION",
+                                          "message": f"{handler.username} te "
+                                          f"invita al cuarto '{roomname}'",
+                                          "username": handler.username,
+                                          "roomname": roomname})
+                        for username in usernames:
+                            if (username not in room.users
+                                    and username not in room.invites):
+                                await self.users[username].send(invite)
+                                room.invites.add(username)
+                        await handler.send(Message({"type": "INFO",
+                                                    "message": "success",
+                                                    "operation": "INVITE",
+                                                    "roomname": roomname}))
+
+                case {"type": "JOIN_ROOM", "roomname": str(roomname)}:
+                    if roomname not in self.rooms:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": "El cuarto "
+                                     f"{roomname} no existe",
+                                     "operation": "JOIN_ROOM",
+                                     "roomname": roomname})
+                            )
+
+                    elif (handler.username in
+                          (room := self.rooms[roomname]).users):
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": "El usuario ya se "
+                                     f"unió al cuarto {roomname}",
+                                     "operation": "JOIN_ROOM",
+                                     "roomname": roomname})
+                            )
+
+                    elif handler.username not in room.invites:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": "El usuario no ha "
+                                     "sido invitado al cuarto "
+                                     f"{roomname}",
+                                     "operation": "JOIN_ROOM",
+                                     "roomname": roomname})
+                            )
+
+                    else:
+                        room.invites.discard(handler.username)
+                        room.users.add(handler.username)
+                        await handler.send(Message({"type": "INFO",
+                                                    "message": "success",
+                                                    "operation": "JOIN_ROOM",
+                                                    "roomname": roomname}))
+                        await self.send_to_all(handler.username,
+                                               Message({"type": "JOINED_ROOM",
+                                                        "roomname": roomname,
+                                                        "username":
+                                                        handler.username}))
+
+                case {"type": "ROOM_USERS", "roomname": str(roomname)}:
+                    if roomname not in self.rooms:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": f"El cuarto '{roomname}' "
+                                     " no existe",
+                                     "operation": "ROOM_USERS",
+                                     "roomname": roomname})
+                        )
+
+                    elif (handler.username not in
+                          (room := self.rooms[roomname]).users):
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": "El usuario no se ha "
+                                     f"unido al cuarto '{roomname}'",
+                                     "operation": "ROOM_USERS",
+                                     "roomname": roomname})
+                        )
+
+                    else:
+                        await handler.send(
+                            Message({"type": "ROOM_USER_LIST",
+                                     "usernames": list(room.users)})
+                        )
+
+                case {"type": "ROOM_MESSAGE", "roomname": str(roomname),
+                      "message": str(message)}:
+                    if roomname not in self.rooms:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": f"El cuarto '{roomname}' "
+                                     " no existe",
+                                     "operation": "ROOM_MESSAGE",
+                                     "roomname": roomname})
+                        )
+
+                    elif (handler.username not in
+                          (room := self.rooms[roomname]).users):
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": "El usuario no se ha "
+                                     f"unido al cuarto '{roomname}'",
+                                     "operation": "ROOM_MESSAGE",
+                                     "roomname": roomname})
+                        )
+
+                    else:
+                        await self.send_to_room(
+                            room, handler.username,
+                            Message({"type": "ROOM_MESSAGE_FROM",
+                                     "roomname": roomname,
+                                     "username": handler.username,
+                                     "message": message})
+                        )
+
+                case {"type": "LEAVE_ROOM", "roomname": roomname}:
+                    if roomname not in self.rooms:
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": f"El cuarto '{roomname}' "
+                                     " no existe",
+                                     "operation": "LEAVE_ROOM",
+                                     "roomname": roomname})
+                        )
+
+                    elif (handler.username not in
+                          (room := self.rooms[roomname]).users):
+                        await handler.send(
+                            Message({"type": "WARNING",
+                                     "message": "El usuario no se ha "
+                                     f"unido al cuarto '{roomname}'",
+                                     "operation": "LEAVE_ROOM",
+                                     "roomname": roomname})
+                        )
+
+                    else:
+                        await handler.send(
+                            Message({"type": "INFO",
+                                     "message": "success",
+                                     "operation": "LEAVE_ROOM",
+                                     "roomname": roomname})
+                        )
+                        room.users.discard(handler.username)
+                        if not room.users:
+                            self.rooms.pop(roomname)
+                        else:
+                            await self.send_to_room(
+                                room, handler.username,
+                                Message({"type": "LEFT_ROOM",
+                                         "roomname": roomname,
+                                         "username": handler.username})
+                            )
+
                 case {"type": "DISCONNECT"}:
                     raise asyncio.CancelledError("Disconnect")
                 case _:
