@@ -1,6 +1,10 @@
 * Pumachat
 ** Requirements
-Python >= 3.10 (needed for PEP 634)
+- *Python* >= 3.10 (needed for PEP 634)
+- *prompt-toolkit* which you can install by running:
+#+begin_src sh
+python -m pip install prompt-toolkit
+#+end_src
 
 ** Testing
 Just run the following command from the root project directory:
